@@ -15,14 +15,19 @@
       #(as-fn (zip/node new-loc) new-loc))))
 
 (defn element-tag [tag-name attributes]
-  (utils/lower-case-keyword
-   (str tag-name
-        (when-let [id (:id attributes)]
-          (str "#" id))
-        (when-let [class (:class attributes)]
-          (->> (string/split class #"\s")
-               (map #(str "." %))
-               (apply str))))))
+  [(utils/lower-case-keyword
+    (str tag-name
+         (when-let [id (:id attributes)]
+           (str "#" id))
+         (when-let [class (:class attributes)]
+           (->> (string/split class #"\s")
+                (remove #(string/includes? % "/"))
+                (map (partial str "."))
+                (apply str)))))
+   (when-let [class (:class attributes)]
+     (->> (string/split class #"\s")
+          (filter #(string/includes? % "/"))
+          (vec)))])
 
 ;;
 ;; Protocols
@@ -99,8 +104,10 @@
      ;; html-escaping comments, data-nodes, and the contents of
      ;; unescapable nodes.
      (let [attributes (trampoline as-hiccup (.attributes this))
-           tag (element-tag (.tagName this) attributes)
-           attributes (dissoc attributes :id :class)
+           [tag classes] (element-tag (.tagName this) attributes)
+           attributes (cond-> attributes
+                        true (dissoc :id :class)
+                        (seq classes) (assoc :class classes))
            children (cond->> (.childNodes this) (utils/unescapable-content tag) (map str))
            data (into [] (concat [tag attributes] children))]
        (end-or-recur as-hiccup loc data (utils/unescapable-content tag)))))
