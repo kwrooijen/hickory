@@ -1,6 +1,7 @@
 (ns hickory.core
   (:require [hickory.utils :as utils]
             [hickory.zip :as hzip]
+            [clojure.string :as string]
             [clojure.zip :as zip])
   (:import [org.jsoup Jsoup]
            [org.jsoup.nodes Attribute Attributes Comment DataNode Document
@@ -12,6 +13,16 @@
     (if (zip/end? new-loc)
       (zip/root new-loc)
       #(as-fn (zip/node new-loc) new-loc))))
+
+(defn element-tag [this attributes]
+  (utils/lower-case-keyword
+   (str (.tagName this)
+        (when-let [id (:id attributes)]
+          (str "#" id))
+        (when-let [class (:class attributes)]
+          (->> (string/split class #"\s")
+               (map #(str "." %))
+               (apply str))))))
 
 ;;
 ;; Protocols
@@ -87,9 +98,11 @@
      ;; html-escaping the parsed contents of text nodes, and not
      ;; html-escaping comments, data-nodes, and the contents of
      ;; unescapable nodes.
-     (let [tag (utils/lower-case-keyword (.tagName this))
+     (let [attributes (trampoline as-hiccup (.attributes this))
+           tag (element-tag this attributes)
+           attributes (dissoc attributes :id :class)
            children (cond->> (.childNodes this) (utils/unescapable-content tag) (map str))
-           data (into [] (concat [tag (trampoline as-hiccup (.attributes this))] children))]
+           data (into [] (concat [tag attributes] children))]
        (end-or-recur as-hiccup loc data (utils/unescapable-content tag)))))
   TextNode
   ;; See comment for Element re: html escaping.
