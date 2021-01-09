@@ -14,9 +14,9 @@
       (zip/root new-loc)
       #(as-fn (zip/node new-loc) new-loc))))
 
-(defn element-tag [this attributes]
+(defn element-tag [tag-name attributes]
   (utils/lower-case-keyword
-   (str (.tagName this)
+   (str tag-name
         (when-let [id (:id attributes)]
           (str "#" id))
         (when-let [class (:class attributes)]
@@ -99,7 +99,7 @@
      ;; html-escaping comments, data-nodes, and the contents of
      ;; unescapable nodes.
      (let [attributes (trampoline as-hiccup (.attributes this))
-           tag (element-tag this attributes)
+           tag (element-tag (.tagName this) attributes)
            attributes (dissoc attributes :id :class)
            children (cond->> (.childNodes this) (utils/unescapable-content tag) (map str))
            data (into [] (concat [tag attributes] children))]
